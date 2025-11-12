@@ -201,6 +201,18 @@
             </nav>
         </header>
 
+        <!-- [추가] API 키 필요 경고창 -->
+        <div id="api-key-warning" class="hidden p-4 mb-6 bg-yellow-100 border border-yellow-300 rounded-lg text-yellow-800 space-y-2">
+            <p class="font-bold">API 키가 필요합니다.</p>
+            <p class="text-sm">수업 설계안을 생성하려면 유효한 Gemini API 키가 필요합니다. 좌측 상단의 
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block -mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg> 
+                '설정' 버튼을 눌러 API 키를 입력해주세요.
+            </p>
+        </div>
+
         <main>
             <!-- [화면 0: 기본 정보 입력] -->
             <div id="screen-0" class="screen space-y-6">
@@ -233,7 +245,8 @@
                 </div>
                 
                 <div class="flex justify-end pt-4">
-                    <button onclick="goToScreen(1)" class="btn btn-primary">다음: Track 단계로 ➡︎</button>
+                    <!-- [추가] requires-key 클래스 -->
+                    <button onclick="goToScreen(1)" class="btn btn-primary requires-key">다음: Track 단계로 ➡︎</button>
                 </div>
             </div>
 
@@ -273,7 +286,8 @@
                 
                 <div class="flex justify-between pt-4">
                     <button onclick="goToScreen(0)" class="btn btn-secondary">⬅︎ 이전: 기본 정보로</button>
-                    <button onclick="goToScreen(2)" class="btn btn-primary">다음: Analyze 단계로 ➡︎</button>
+                    <!-- [추가] requires-key 클래스 -->
+                    <button onclick="goToScreen(2)" class="btn btn-primary requires-key">다음: Analyze 단계로 ➡︎</button>
                 </div>
             </div>
 
@@ -349,7 +363,8 @@
                 
                 <div class="flex justify-between pt-4">
                     <button onclick="goToScreen(1)" class="btn btn-secondary">⬅︎ 이전: Track 단계로</button>
-                    <button onclick="goToScreen(3)" class="btn btn-primary">다음: Support 단계로 ➡︎</button>
+                    <!-- [추가] requires-key 클래스 -->
+                    <button onclick="goToScreen(3)" class="btn btn-primary requires-key">다음: Support 단계로 ➡︎</button>
                 </div>
             </div>
             
@@ -368,7 +383,8 @@
                 
                 <div class="flex justify-between pt-4">
                     <button onclick="goToScreen(2)" class="btn btn-secondary">⬅︎ 이전: Analyze 단계로</button>
-                    <button onclick="handleGenerate()" class="btn btn-emphasis">➡︎ 수업 설계안 생성 시작하기</button>
+                    <!-- [추가] requires-key 클래스 -->
+                    <button onclick="handleGenerate()" class="btn btn-emphasis requires-key">➡︎ 수업 설계안 생성 시작하기</button>
                 </div>
             </div>
 
@@ -397,7 +413,8 @@
                 <div class="flex justify-between pt-4">
                     <button onclick="goToScreen(0)" class="btn btn-secondary">⬅︎ 입력 정보 수정하기</button>
                     <!-- [수정 4] 버튼 텍스트 및 기능 변경 -->
-                    <button onclick="resetApp()" class="btn btn-primary">처음으로</button>
+                    <!-- [추가] requires-key 클래스 -->
+                    <button onclick="resetApp()" class="btn btn-primary requires-key">처음으로</button>
                 </div>
             </div>
             
@@ -418,8 +435,8 @@
             </div>
             <!-- 유효성 검사 상태 메시지 -->
             <div id="validation-status" class="text-sm font-medium h-5"></div>
-            <div class="flex justify-end space-x-3 pt-2">
-                <button onclick="closeSettings()" class="btn btn-secondary">닫기</button>
+            <!-- [수정] 닫기 버튼 제거, 가운데 정렬을 위해 justify-center 로 변경 -->
+            <div class="flex justify-center w-full pt-2">
                 <button onclick="validateAndSaveKey()" class="btn btn-primary">유효성 검사 및 저장</button>
             </div>
         </div>
@@ -487,6 +504,10 @@
         const apiKeyInputEl = document.getElementById('apiKeyInput');
         const validationStatusEl = document.getElementById('validation-status');
         const STORAGE_KEY = 'gemini_api_key'; // API 키 저장용
+
+        // [추가] API 키 경고 DOM
+        const apiKeyWarningEl = document.getElementById('api-key-warning');
+        const keyRequiredButtons = document.querySelectorAll('.requires-key');
 
         // ---
         // 3. 이벤트 리스너
@@ -598,9 +619,14 @@
          */
         async function validateAndSaveKey() {
             const keyToTest = apiKeyInputEl.value.trim();
+            
+            // [수정] 키 제거 로직
             if (!keyToTest) {
-                validationStatusEl.textContent = 'API 키를 입력해주세요.';
-                validationStatusEl.className = 'text-sm font-medium text-red-600 h-5';
+                localStorage.removeItem(STORAGE_KEY);
+                validationStatusEl.textContent = 'API 키가 제거되었습니다.';
+                validationStatusEl.className = 'text-sm font-medium text-blue-600 h-5';
+                checkKeyAndLockApp(); // 앱 잠금
+                setTimeout(closeSettings, 1500);
                 return;
             }
 
@@ -618,6 +644,7 @@
                     localStorage.setItem(STORAGE_KEY, keyToTest);
                     validationStatusEl.textContent = 'API 키가 유효하며, 저장되었습니다.';
                     validationStatusEl.className = 'text-sm font-medium text-green-600 h-5';
+                    checkKeyAndLockApp(); // 앱 잠금 해제
                     // 1.5초 후 자동으로 모달 닫기
                     setTimeout(closeSettings, 1500);
                 } else {
@@ -627,12 +654,36 @@
                     validationStatusEl.textContent = `유효하지 않은 키입니다. (오류: ${response.status})`;
                     validationStatusEl.className = 'text-sm font-medium text-red-600 h-5';
                     localStorage.removeItem(STORAGE_KEY); // 유효하지 않은 키 제거
+                    checkKeyAndLockApp(); // 앱 잠금
                 }
             } catch (error) {
                 // 네트워크 오류 등
                 console.error("Validation Fetch Error:", error);
                 validationStatusEl.textContent = '검사 중 네트워크 오류가 발생했습니다.';
                 validationStatusEl.className = 'text-sm font-medium text-red-600 h-5';
+                checkKeyAndLockApp(); // 앱 잠금 (키 상태가 불확실하므로)
+            }
+        }
+
+        // [추가] 앱 잠금/해제 함수
+        /**
+         * API 키 존재 여부를 확인하고, 키가 없으면 경고창을 표시하고
+         * 주요 버튼들(requires-key 클래스)을 비활성화합니다.
+         */
+        function checkKeyAndLockApp() {
+            const apiKey = localStorage.getItem(STORAGE_KEY);
+            if (!apiKey) {
+                apiKeyWarningEl.classList.remove('hidden');
+                keyRequiredButtons.forEach(btn => {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                });
+            } else {
+                apiKeyWarningEl.classList.add('hidden');
+                keyRequiredButtons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                });
             }
         }
 
@@ -780,6 +831,15 @@
         
         // 생성 시작 핸들러
         async function handleGenerate() {
+            // [추가] API 키 존재 여부 재확인 (Robustness)
+            const apiKey = localStorage.getItem(STORAGE_KEY);
+            if (!apiKey) {
+                // 이중 확인: 버튼이 활성화되었더라도 키가 없으면 차단
+                alert("API 키가 설정되지 않았습니다. 좌측 상단의 '설정' 버튼을 눌러 API 키를 입력해주세요.");
+                openSettings(); // 설정 모달 바로 열기
+                return;
+            }
+            
             // 마지막 단계(Support) 데이터 저장
             saveCurrentScreenData(); // 현재 화면(3) 데이터 저장
             
@@ -1081,6 +1141,10 @@
                 throw error;
             }
         }
+
+        // [추가] 스크립트 최하단에 초기 실행
+        // 페이지 로드 시, 키 존재 여부를 확인하고 앱 잠금/해제 상태를 설정합니다.
+        checkKeyAndLockApp();
     </script>
 
 </body>
