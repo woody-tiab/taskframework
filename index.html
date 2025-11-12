@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T.A.S.K 수업설계 시뮬레이터 v2</title>
+    <!-- Tailwind CSS 로드 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Paperlogy 웹폰트 로드 -->
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/fonts-archive/Paperlogy/subsets/Paperlogy-dynamic-subset.css');
+        
+        body {
+            font-family: 'Paperlogy', sans-serif;
+            background-color: #F8F9FA; /* 옅은 회색 배경 */
+        }
+        
+        /* 커스텀 테마 색상 (Tailwind에서 직접 사용하기 위함) */
+        .theme-primary-bg { background-color: #0D47A1; }
+        .theme-primary-text { color: #0D47A1; }
+        .theme-secondary-bg { background-color: #1E88E5; }
+        .theme-secondary-text { color: #1E88E5; }
+        .theme-text-default { color: #212529; }
+        
+        /* 기본 버튼 스타일 */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem; /* 8px */
+            font-weight: 700;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .btn-primary {
+            background-color: #0D47A1;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0b3a80;
+        }
+        .btn-secondary {
+            background-color: #e2e8f0;
+            color: #475569;
+        }
+        .btn-secondary:hover {
+            background-color: #cbd5e1;
+        }
+        .btn-emphasis {
+            background-color: #16a34a; /* Green */
+            color: white;
+        }
+        .btn-emphasis:hover {
+            background-color: #15803d;
+        }
+
+        /* 입력 필드 스타일 */
+        .form-input {
+            width: 100%;
+            border-radius: 0.375rem; /* 6px */
+            border: 1px solid #cbd5e1;
+            padding: 0.75rem 1rem;
+            color: #212529;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #1E88E5;
+            box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.2);
+        }
+        
+        /* 체크박스/라디오 스타일 */
+        .form-checkbox, .form-radio {
+            width: 1.25rem;
+            height: 1.25rem;
+            border-radius: 0.25rem;
+            border: 1px solid #cbd5e1;
+            color: #1E88E5;
+            transition: all 0.2s;
+        }
+        .form-checkbox:checked, .form-radio:checked {
+            background-color: #1E88E5;
+            border-color: #1E88E5;
+        }
+        .form-radio {
+            border-radius: 9999px; /* full circle */
+        }
+        
+        /* 로딩 스피너 */
+        .loader {
+            border: 8px solid #f3f3f3; /* Light grey */
+            border-top: 8px solid #0D47A1; /* Blue */
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            animation: spin 1s linear infinite;
+            margin: 4rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* --- [수정 1] 이중 슬라이더 스타일 (3색) --- */
+        .slider-container {
+            position: relative;
+            height: 40px; /* 슬라이더 핸들 및 트랙 공간 */
+            width: 100%;
+            margin-top: 1rem;
+        }
+        input[type="range"].dual-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            outline: none;
+            position: absolute;
+            margin: 0;
+            top: 10px;
+            height: 8px; /* 트랙 높이 */
+            background-color: transparent; /* 트랙은 보이지 않음 */
+            pointer-events: none; /* 슬라이더 자체는 클릭 안 됨 */
+        }
+        input[type="range"].dual-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px; /* 핸들 너비 */
+            height: 20px; /* 핸들 높이 */
+            background-color: #0D47A1; /* 핸들 색상 */
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            cursor: pointer;
+            pointer-events: auto; /* 핸들만 클릭 가능 */
+            margin-top: -6px; /* (핸들높이 - 트랙높이) / 2 */
+            z-index: 10; /* 핸들이 트랙 위에 오도록 함 */
+        }
+        input[type="range"].dual-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background-color: #0D47A1;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            cursor: pointer;
+            pointer-events: auto;
+            z-index: 10;
+        }
+        .slider-track {
+            position: absolute;
+            height: 8px;
+            width: 100%;
+            /* 기본 배경색 (JS 로드 전) */
+            background: linear-gradient(to right, #ef4444 20%, #22c55e 20%, #22c55e 80%, #3b82f6 80%, #3b82f6 100%);
+            border-radius: 4px;
+            top: 10px;
+            z-index: 1; /* 핸들보다 뒤에, 컨테이너보다 위에 */
+        }
+        /* .slider-fill 은 이제 사용되지 않으므로 제거함 */
+        /* --- 끝: 슬라이더 스타일 --- */
+    </style>
+</head>
+<body class="theme-text-default">
+
+    <!-- [추가] position: relative 를 #app 에 추가합니다. -->
+    <div id="app" class="max-w-4xl mx-auto p-6 md:p-10 my-10 bg-white rounded-2xl shadow-xl border border-gray-200 relative">
+        
+        <!-- [추가] 설정 버튼 (좌측 상단) -->
+        <button onclick="openSettings()" class="absolute top-6 left-6 p-2 text-gray-400 hover:text-blue-700 transition z-20" title="API 키 설정">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        </button>
+
+        <!-- [A. 글로벌] 상단 네비게이션 바 -->
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-center mb-2 theme-primary-text">T.A.S.K 수업설계 시뮬레이터</h1>
+            <p class="text-center text-gray-600 mb-6">훈민초등학교 AI 기반 수업설계 프레임워크</p>
+            
+            <nav class="flex items-center justify-between text-xs md:text-sm">
+                <div id="nav-step-0" class="step active flex-1 text-center font-bold p-3 border-b-4 border-blue-700 text-blue-700">
+                    0. 기본 정보
+                </div>
+                <div class="text-gray-300 mx-1">&gt;</div>
+                <div id="nav-step-1" class="step inactive flex-1 text-center font-semibold p-3 border-b-4 border-transparent text-gray-400">
+                    1. Track
+                </div>
+                <div class="text-gray-300 mx-1">&gt;</div>
+                <div id="nav-step-2" class="step inactive flex-1 text-center font-semibold p-3 border-b-4 border-transparent text-gray-400">
+                    2. Analyze
+                </div>
+                <div class="text-gray-300 mx-1">&gt;</div>
+                <div id="nav-step-3" class="step inactive flex-1 text-center font-semibold p-3 border-b-4 border-transparent text-gray-400">
+                    3. Support
+                </div>
+                <div class="text-gray-300 mx-1">&gt;</div>
+                <!-- [수정 2] 네비게이션 탭 이름 변경 -->
+                <div id="nav-step-4" class="step inactive flex-1 text-center font-semibold p-3 border-b-4 border-transparent text-gray-400">
+                    4. Know
+                </div>
+            </nav>
+        </header>
+
+        <main>
+            <!-- [화면 0: 기본 정보 입력] -->
+            <div id="screen-0" class="screen space-y-6">
+                <h2 class="text-2xl font-semibold text-gray-800">0. 기본 정보 입력</h2>
+                
+                <div>
+                    <label for="schoolType" class="block text-md font-medium text-gray-700 mb-2">1. 학교급 선택</label>
+                    <select id="schoolType" name="schoolType" class="form-input">
+                        <option value="초등학교">초등학교</option>
+                        <option value="중학교">중학교</option>
+                        <option value="고등학교">고등학교</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="grade" class="block text-md font-medium text-gray-700 mb-2">2. 학년 선택</label>
+                    <select id="grade" name="grade" class="form-input">
+                        <!-- JS로 동적 생성됨 -->
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="subject" class="block text-md font-medium text-gray-700 mb-2">3. 과목</label>
+                    <input type="text" id="subject" name="subject" class="form-input" placeholder="예: 수학">
+                </div>
+                
+                <div>
+                    <label for="topic" class="block text-md font-medium text-gray-700 mb-2">4. 학습 주제</label>
+                    <input type="text" id="topic" name="topic" class="form-input" placeholder="예: 3. 나눗셈 / (몇십) ÷ (몇)을 구해 볼까요">
+                </div>
+                
+                <div class="flex justify-end pt-4">
+                    <button onclick="goToScreen(1)" class="btn btn-primary">다음: Track 단계로 ➡︎</button>
+                </div>
+            </div>
+
+            <!-- [화면 1: T (Track) - 데이터 수집] -->
+            <div id="screen-1" class="screen hidden space-y-6">
+                <h2 class="text-2xl font-semibold text-gray-800">1. T (Track) - 데이터 수집</h2>
+                <p class="text-gray-600">학생들을 이해하기 위해 어떤 데이터를 '추적(Track)'하시겠습니까? (복수 선택 가능)</p>
+                
+                <div class="space-y-4" data-group-name="track">
+                    <fieldset class="p-4 border rounded-lg">
+                        <legend class="text-lg font-semibold px-2">영역 1: 학습 데이터</legend>
+                        <div class="space-y-3 mt-2">
+                            <label class="flex items-center space-x-3"><input type="checkbox" name="track" value="AIDT·AI코스웨어(하이러닝) 진단평가 결과" class="form-checkbox"><span>AIDT·AI코스웨어(하이러닝) 진단평가 결과</span></label>
+                            <label class="flex items-center space-x-3"><input type="checkbox" name="track" value="단원평가 및 학습 결과 (정답률, 소요 시간)" class="form-checkbox"><span>단원평가 및 학습 결과 (정답률, 소요 시간)</span></label>
+                            <label class="flex items-center space-x-3"><input type="checkbox" name="track" value="에듀테크 대시보드 결과 (띵커벨, 카훗 등)" class="form-checkbox"><span>에듀테크 대시보드 결과 (띵커벨, 카훗 등)</span></label>
+                            <label class="flex items-center space-x-3"><input type="checkbox" name="track" value="기초학력 3Rs 진단 결과" class="form-checkbox"><span>기초학력 3Rs 진단 결과</span></label>
+                        </div>
+                    </fieldset>
+                    
+                    <fieldset class="p-4 border rounded-lg">
+                        <legend class="text-lg font-semibold px-2">영역 2: 정서 데이터</legend>
+                        <div class="space-y-3 mt-2">
+                            <label class="flex items-center space-x-3"><input type="checkbox" name="track" value="아트봉봉스쿨 AI 그림심리검사" class="form-checkbox"><span>아트봉봉스쿨 AI 그림심리검사</span></label>
+                            <label class="flex items-center space-x-3"><input type="checkbox" name="track" value="AI 마음일기 정서 데이터" class="form-checkbox"><span>AI 마음일기 정서 데이터</span></label>
+                            <label class="flex items-center space-x-3"><input type="checkbox" name="track" value="스트레스 및 정서심리검사 결과" class="form-checkbox"><span>스트레스 및 정서심리검사 결과</span></label>
+                        </div>
+                    </fieldset>
+                    
+                    <fieldset class="p-4 border rounded-lg">
+                        <legend class="text-lg font-semibold px-2">영역 3: 기타 데이터</legend>
+                        <div class="space-y-3 mt-2">
+                            <label class="flex items-center space-x-3"><input type="checkbox" name="track" value="교사 관찰 기록 (학습 태도, 집중도)" class="form-checkbox"><span>교사 관찰 기록 (학습 태도, 집중도)</span></label>
+                            <label class="flex items-center space-x-3"><input type="checkbox" name="track" value="동료 평가 및 협력도 분석" class="form-checkbox"><span>동료 평가 및 협력도 분석</span></label>
+                        </div>
+                    </fieldset>
+                </div>
+                
+                <div class="flex justify-between pt-4">
+                    <button onclick="goToScreen(0)" class="btn btn-secondary">⬅︎ 이전: 기본 정보로</button>
+                    <button onclick="goToScreen(2)" class="btn btn-primary">다음: Analyze 단계로 ➡︎</button>
+                </div>
+            </div>
+
+            <!-- [화면 2: A (Analyze) - 데이터 분석] -->
+            <div id="screen-2" class="screen hidden space-y-6">
+                <h2 class="text-2xl font-semibold text-gray-800">2. A (Analyze) - 데이터 분석</h2>
+                <p class="text-gray-600">수집된 데이터를 바탕으로 학급의 특징과 학생 유형을 '분석(Analyze)'해 주세요.</p>
+                
+                <div>
+                    <label class="block text-md font-medium text-gray-700 mb-2">1. 우리 학급의 전반적 특징은?</label>
+                    <div class="space-y-3" data-group-name="classFeature">
+                        <label class="flex items-center space-x-3"><input type="radio" name="classFeature" value="활동에는 적극적이나 개별 집중도 편차가 큼" class="form-radio"><span>활동에는 적극적이나 개별 집중도 편차가 큼</span></label>
+                        <label class="flex items-center space-x-3"><input type="radio" name="classFeature" value="디지털 도구 활용은 능숙하나, 학습 동기가 전반적으로 낮음" class="form-radio"><span>디지털 도구 활용은 능숙하나, 학습 동기가 전반적으로 낮음</span></label>
+                        <label class="flex items-center space-x-3"><input type="radio" name="classFeature" value="기초 학력 격차가 뚜렷하여 수준별 접근이 시급함" class="form-radio"><span>기초 학력 격차가 뚜렷하여 수준별 접근이 시급함</span></label>
+                        <label class="flex items-center space-x-3"><input type="radio" name="classFeature" value="협력 활동 선호는 높으나, 일부 학생이 토의를 주도하는 경향" class="form-radio"><span>협력 활동 선호는 높으나, 일부 학생이 토의를 주도하는 경향</span></label>
+                        <label class="flex items-center space-x-3"><input type="radio" name="classFeature" value="전반적으로 차분하고 성실하나, 새로운 도전을 망설임" class="form-radio"><span>전반적으로 차분하고 성실하나, 새로운 도전을 망설임</span></label>
+                    </div>
+                </div>
+                
+                <!-- [수정 1.a] 정서 데이터 UI 변경 -->
+                <div>
+                    <label class="block text-md font-medium text-gray-700 mb-2">2. 주요 정서 데이터 분석 결과는?</label>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="stressLevel" class="text-sm font-medium text-gray-700">스트레스 수준</label>
+                            <select id="stressLevel" name="stressLevel" class="form-input mt-1">
+                                <option value="높음">높음</option>
+                                <option value="중간">중간</option>
+                                <option value="낮음">낮음</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="focusLevel" class="text-sm font-medium text-gray-700">과제 집중력</label>
+                            <select id="focusLevel" name="focusLevel" class="form-input mt-1">
+                                <option value="높음">높음</option>
+                                <option value="중간">중간</option>
+                                <option value="낮음">낮음</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="coopLevel" class="text-sm font-medium text-gray-700">협력 지수</label>
+                            <select id="coopLevel" name="coopLevel" class="form-input mt-1">
+                                <option value="높음">높음</option>
+                                <option value="중간">중간</option>
+                                <option value="낮음">낮음</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- [수정 1] 학습자 비율 슬라이더 (3색) -->
+                <div>
+                    <label class="block text-md font-medium text-gray-700 mb-2">3. 학습자 수준별 비율 설정 (자동 합계 100%)</label>
+                    <div class="p-4 border rounded-lg">
+                        <div class="flex justify-between items-center text-sm font-medium">
+                            <span id="slow-display" class="text-red-600">느린 (20%)</span>
+                            <span id="mid-display" class="text-green-600">보통 (60%)</span>
+                            <span id="fast-display" class="text-blue-600">빠른 (20%)</span>
+                        </div>
+                        <div class="slider-container">
+                            <div id="slider-track" class="slider-track"></div>
+                            <!-- <div id="slider-fill" class="slider-fill"></div> --><!-- 제거됨 -->
+                            <input type="range" id="rangeSlow" min="0" max="100" value="20" class="dual-slider" style="z-index: 10;">
+                            <input type="range" id="rangeFast" min="0" max="100" value="80" class="dual-slider" style="z-index: 11;">
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-gray-500 mt-2">
+                            <span>선행 보충 필요</span>
+                            <span>반복 훈련 필요</span>
+                            <span>도전 과제 필요</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between pt-4">
+                    <button onclick="goToScreen(1)" class="btn btn-secondary">⬅︎ 이전: Track 단계로</button>
+                    <button onclick="goToScreen(3)" class="btn btn-primary">다음: Support 단계로 ➡︎</button>
+                </div>
+            </div>
+            
+            <!-- [화면 3: S (Support) - 맞춤형 지원] -->
+            <div id="screen-3" class="screen hidden space-y-6">
+                <h2 class="text-2xl font-semibold text-gray-800">3. S (Support) - 맞춤형 지원</h2>
+                <p class="text-gray-600">분석 결과를 바탕으로 학생들에게 어떤 '지원(Support)'을 제공하시겠습니까? (복수 선택 가능)</p>
+                
+                <div class="space-y-3" data-group-name="support">
+                    <label class="flex items-center space-x-3"><input type="checkbox" name="support" value="수준별 맞춤형 과제 제시 (기초·표준·도전 과제)" class="form-checkbox"><span>수준별 맞춤형 과제 제시 (기초·표준·도전 과제)</span></label>
+                    <label class="flex items-center space-x-3"><input type="checkbox" name="support" value="AI코스웨어를 통한 개별 진단 후 보충 과제 제공" class="form-checkbox"><span>AI코스웨어를 통한 개별 진단 후 보충 과제 제공</span></label>
+                    <label class="flex items-center space-x-3"><input type="checkbox" name="support" value="협력학습, 동료 피드백, 문제 만들기 활동 등" class="form-checkbox"><span>협력학습, 동료 피드백, 문제 만들기 활동 등</span></label>
+                    <label class="flex items-center space-x-3"><input type="checkbox" name="support" value="교사 피드백 + AI 피드백의 병행" class="form-checkbox"><span>교사 피드백 + AI 피드백의 병행</span></label>
+                    <input type="text" id="supportOther" name="supportOther" class="form-input mt-2" placeholder="(기타 직접 입력...)">
+                </div>
+                
+                <div class="flex justify-between pt-4">
+                    <button onclick="goToScreen(2)" class="btn btn-secondary">⬅︎ 이전: Analyze 단계로</button>
+                    <button onclick="handleGenerate()" class="btn btn-emphasis">➡︎ 수업 설계안 생성 시작하기</button>
+                </div>
+            </div>
+
+            <!-- [화면 4 & 5: 결과 생성] -->
+            <div id="screen-4" class="screen hidden space-y-8">
+                <div id="loading-container" class="hidden">
+                    <div class="loader"></div>
+                    <p class="text-center text-xl font-semibold text-blue-800">
+                        T.A.S.K 기반 수업 설계안을 생성 중입니다...
+                    </p>
+                    <p class="text-center text-gray-600 mt-2">
+                        입력하신 정보를 바탕으로 AI가 맞춤형 수업을 구성하고 있습니다. 잠시만 기다려주세요.
+                    </p>
+                </div>
+                
+                <div id="error-container" class="hidden p-6 bg-red-100 border border-red-300 rounded-lg">
+                    <h3 class="text-xl font-bold text-red-800">오류 발생</h3>
+                    <p class="text-red-700 mt-2">수업 설계안 생성 중 오류가 발생했습니다. 네트워크 연결을 확인하거나 잠시 후 다시 시도해 주세요.</p>
+                    <p id="error-message" class="text-sm text-red-600 mt-1"></p>
+                </div>
+
+                <div id="results-container">
+                    <!-- AI가 생성한 HTML이 여기에 삽입됩니다. -->
+                </div>
+                
+                <div class="flex justify-between pt-4">
+                    <button onclick="goToScreen(0)" class="btn btn-secondary">⬅︎ 입력 정보 수정하기</button>
+                    <!-- [수정 4] 버튼 텍스트 및 기능 변경 -->
+                    <button onclick="resetApp()" class="btn btn-primary">처음으로</button>
+                </div>
+            </div>
+            
+        </main>
+    </div>
+
+    <!-- [추가] API 키 설정 모달 -->
+    <div id="settings-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-gray-800">API 키 설정</h2>
+                <button onclick="closeSettings()" class="text-gray-400 hover:text-gray-700 text-3xl font-light">&times;</button>
+            </div>
+            <p class="text-sm text-gray-600">Gemini API 키를 입력하세요. 키는 이 브라우저의 로컬 저장소(localStorage)에 안전하게 저장됩니다.</p>
+            <div>
+                <label for="apiKeyInput" class="block text-md font-medium text-gray-700 mb-2">Gemini API Key</label>
+                <input type="password" id="apiKeyInput" class="form-input" placeholder="AIzaSy...">
+            </div>
+            <!-- 유효성 검사 상태 메시지 -->
+            <div id="validation-status" class="text-sm font-medium h-5"></div>
+            <div class="flex justify-end space-x-3 pt-2">
+                <button onclick="closeSettings()" class="btn btn-secondary">닫기</button>
+                <button onclick="validateAndSaveKey()" class="btn btn-primary">유효성 검사 및 저장</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ---
+        // 1. 상태 관리
+        // ---
+        const initialFormData = {
+            schoolType: '초등학교',
+            grade: '1',
+            subject: '',
+            topic: '',
+            track: [],
+            classFeature: '',
+            stressLevel: '높음',
+            focusLevel: '높음',
+            coopLevel: '높음',
+            fastLearners: 20,
+            midLearners: 60,
+            slowLearners: 20,
+            support: [],
+            supportOther: ''
+        };
+        let currentScreen = 0;
+        let formData = { ...initialFormData };
+
+        // ---
+        // 2. DOM 참조
+        // ---
+        const screens = document.querySelectorAll('.screen');
+        const navSteps = document.querySelectorAll('.step');
+        
+        // 화면 0
+        const schoolTypeEl = document.getElementById('schoolType');
+        const gradeEl = document.getElementById('grade');
+        const subjectEl = document.getElementById('subject');
+        const topicEl = document.getElementById('topic');
+        
+        // 화면 2
+        const stressLevelEl = document.getElementById('stressLevel');
+        const focusLevelEl = document.getElementById('focusLevel');
+        const coopLevelEl = document.getElementById('coopLevel');
+        
+        // [수정 1] 슬라이더 DOM 참조
+        const rangeSlowEl = document.getElementById('rangeSlow');
+        const rangeFastEl = document.getElementById('rangeFast');
+        const slowDisplayEl = document.getElementById('slow-display');
+        const midDisplayEl = document.getElementById('mid-display');
+        const fastDisplayEl = document.getElementById('fast-display');
+        const sliderTrackEl = document.getElementById('slider-track'); // 3색 트랙
+        
+        // 화면 3
+        const supportOtherEl = document.getElementById('supportOther');
+
+        // 화면 4 (결과)
+        const loadingContainer = document.getElementById('loading-container');
+        const errorContainer = document.getElementById('error-container');
+        const errorMessageEl = document.getElementById('error-message');
+        const resultsContainer = document.getElementById('results-container');
+
+        // [추가] Settings Modal DOM
+        const settingsModalEl = document.getElementById('settings-modal');
+        const apiKeyInputEl = document.getElementById('apiKeyInput');
+        const validationStatusEl = document.getElementById('validation-status');
+        const STORAGE_KEY = 'gemini_api_key'; // API 키 저장용
+
+        // ---
+        // 3. 이벤트 리스너
+        // ---
+        
+        // 학교급에 따른 학년 동적 변경
+        schoolTypeEl.addEventListener('change', updateGradeOptions);
+        
+        function updateGradeOptions() {
+            const selectedSchool = schoolTypeEl.value;
+            let options = '';
+            
+            if (selectedSchool === '초등학교') {
+                for (let i = 1; i <= 6; i++) {
+                    options += `<option value="${i}">${i}학년</option>`;
+                }
+            } else { // 중학교 or 고등학교
+                for (let i = 1; i <= 3; i++) {
+                    options += `<option value="${i}">${i}학년</option>`;
+                }
+            }
+            gradeEl.innerHTML = options;
+            gradeEl.value = '1'; // 기본값 1학년으로 설정
+        }
+
+        // [수정 1] 3색 슬라이더 이벤트 리스너
+        rangeSlowEl.addEventListener('input', handleSliderInput);
+        rangeFastEl.addEventListener('input', handleSliderInput);
+
+        function handleSliderInput() {
+            let valSlow = parseInt(rangeSlowEl.value);
+            let valFast = parseInt(rangeFastEl.value);
+            const minGap = 5; // '보통' 학습자 최소 비율 5%
+
+            // 슬라이더가 겹치거나 최소 갭을 유지하도록 강제
+            if (valSlow > valFast - minGap) {
+                // 이 로직은 valFast가 움직였을 때 valSlow를 밀어내는 것을 방지합니다.
+                // 임시로, valFast가 움직인 것으로 간주하고 valSlow를 조정합니다.
+                // -> 더 나은 로직: 값이 겹치면, valFast를 기준으로 valSlow를 민다.
+                //    (사용자가 valSlow를 80으로 옮기려 해도 75까지만 가게 됨)
+                
+                if (valFast <= valSlow + minGap) {
+                    valSlow = valFast - minGap;
+                    if (valSlow < 0) {
+                        valSlow = 0;
+                        valFast = 5;
+                    }
+                    rangeSlowEl.value = valSlow;
+                    rangeFastEl.value = valFast;
+                }
+            }
+            // 범위 강제
+            if (valSlow < 0) rangeSlowEl.value = 0;
+            if (valFast > 100) rangeFastEl.value = 100;
+
+            updateSliderDisplay();
+        }
+
+        function updateSliderDisplay() {
+            const valSlow = parseInt(rangeSlowEl.value);
+            const valFast = parseInt(rangeFastEl.value);
+
+            const percentSlow = valSlow;
+            const percentFast = 100 - valFast;
+            const percentMid = valFast - valSlow; // 100 - percentSlow - percentFast 와 동일
+
+            // formData 업데이트
+            formData.slowLearners = percentSlow;
+            formData.midLearners = percentMid;
+            formData.fastLearners = percentFast;
+
+            // 텍스트 레이블 업데이트
+            slowDisplayEl.textContent = `느린 (${percentSlow}%)`;
+            midDisplayEl.textContent = `보통 (${percentMid}%)`;
+            fastDisplayEl.textContent = `빠른 (${percentFast}%)`;
+            
+            // [수정 1] 3색 그라데이션 트랙 업데이트
+            // Red: #ef4444, Green: #22c55e, Blue: #3b82f6 (Tailwind colors)
+            sliderTrackEl.style.background = `linear-gradient(to right, 
+                #ef4444 ${valSlow}%, 
+                #22c55e ${valSlow}%, 
+                #22c55e ${valFast}%, 
+                #3b82f6 ${valFast}%, 
+                #3b82f6 100%
+            )`;
+        }
+        
+        // 초기 학년 옵션 설정
+        updateGradeOptions();
+        // 초기 슬라이더 설정
+        updateSliderDisplay();
+
+        // [추가] API 키 설정 모달 함수
+        function openSettings() {
+            // 저장된 키를 입력창에 불러오기
+            apiKeyInputEl.value = localStorage.getItem(STORAGE_KEY) || '';
+            validationStatusEl.textContent = ''; // 상태 메시지 초기화
+            validationStatusEl.className = 'text-sm font-medium h-5';
+            settingsModalEl.classList.remove('hidden');
+        }
+
+        function closeSettings() {
+            settingsModalEl.classList.add('hidden');
+        }
+
+        /**
+         * [추가] API 키 유효성 검사 및 저장
+         * 간단한 모델 목록 조회를 통해 키의 유효성을 검사합니다.
+         */
+        async function validateAndSaveKey() {
+            const keyToTest = apiKeyInputEl.value.trim();
+            if (!keyToTest) {
+                validationStatusEl.textContent = 'API 키를 입력해주세요.';
+                validationStatusEl.className = 'text-sm font-medium text-red-600 h-5';
+                return;
+            }
+
+            validationStatusEl.textContent = '유효성을 검사 중입니다...';
+            validationStatusEl.className = 'text-sm font-medium text-blue-600 h-5';
+
+            // 유효성 검사를 위한 간단한 API 호출 (모델 목록 조회)
+            const validationUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${keyToTest}`;
+            
+            try {
+                const response = await fetch(validationUrl);
+                
+                if (response.ok) {
+                    // 성공: 키가 유효함
+                    localStorage.setItem(STORAGE_KEY, keyToTest);
+                    validationStatusEl.textContent = 'API 키가 유효하며, 저장되었습니다.';
+                    validationStatusEl.className = 'text-sm font-medium text-green-600 h-5';
+                    // 1.5초 후 자동으로 모달 닫기
+                    setTimeout(closeSettings, 1500);
+                } else {
+                    // 실패: 키가 유효하지 않음
+                    const errorData = await response.json();
+                    console.error("Validation Error:", errorData);
+                    validationStatusEl.textContent = `유효하지 않은 키입니다. (오류: ${response.status})`;
+                    validationStatusEl.className = 'text-sm font-medium text-red-600 h-5';
+                    localStorage.removeItem(STORAGE_KEY); // 유효하지 않은 키 제거
+                }
+            } catch (error) {
+                // 네트워크 오류 등
+                console.error("Validation Fetch Error:", error);
+                validationStatusEl.textContent = '검사 중 네트워크 오류가 발생했습니다.';
+                validationStatusEl.className = 'text-sm font-medium text-red-600 h-5';
+            }
+        }
+
+
+        // ---
+        // 4. 네비게이션
+        // ---
+        function goToScreen(screenIndex) {
+            // 1. 현재 화면 데이터 저장
+            saveCurrentScreenData();
+            
+            // 2. 퍼센트 검증 로직 (슬라이더가 100%를 보장하므로 제거됨)
+            
+            // 3. 화면 숨기기/표시하기
+            screens.forEach((screen, index) => {
+                if (index === screenIndex) {
+                    screen.classList.remove('hidden');
+                } else {
+                    screen.classList.add('hidden');
+                }
+            });
+            
+            // 4. 네비게이션 바 업데이트
+            updateNavBar(screenIndex);
+            
+            // 5. 현재 화면 인덱스 업데이트
+            currentScreen = screenIndex;
+            
+            // 결과 화면으로 이동 시, 이전 결과 초기화
+            if (screenIndex === 4) {
+                resultsContainer.innerHTML = '';
+                errorContainer.classList.add('hidden');
+            }
+        }
+
+        function updateNavBar(activeIndex) {
+            navSteps.forEach((step, index) => {
+                // [수정 3] 'visited' 관련 클래스까지 모두 제거하도록 보강
+                step.classList.remove(
+                    'active', 'inactive', 'visited', 
+                    'border-blue-700', 'text-blue-700', 
+                    'border-transparent', 'text-gray-400', 
+                    'border-blue-300', 'text-blue-500',
+                    'font-bold', 'font-semibold'
+                );
+                
+                if (index === activeIndex) {
+                    // 현재 활성화된 단계
+                    step.classList.add('active', 'border-blue-700', 'text-blue-700', 'font-bold');
+                } else if (index < activeIndex) {
+                    // 이미 거쳐온 단계
+                    step.classList.add('visited', 'border-blue-300', 'text-blue-500', 'font-semibold');
+                } else {
+                    // 아직 도달하지 않은 단계
+                    step.classList.add('inactive', 'border-transparent', 'text-gray-400', 'font-semibold');
+                }
+            });
+        }
+        
+        // ---
+        // [수정 4.b] 앱 초기화 기능
+        // ---
+        function resetApp() {
+            // 1. formData 객체 초기화
+            formData = { ...initialFormData };
+            
+            // 2. HTML 폼 필드 초기화
+            // 화면 0
+            schoolTypeEl.value = formData.schoolType;
+            updateGradeOptions(); // 학년 옵션 및 값 초기화
+            gradeEl.value = formData.grade;
+            subjectEl.value = formData.subject;
+            topicEl.value = formData.topic;
+            
+            // 화면 1
+            document.querySelectorAll('input[name="track"]:checked').forEach(el => el.checked = false);
+            
+            // 화면 2
+            const featureEl = document.querySelector('input[name="classFeature"]:checked');
+            if (featureEl) featureEl.checked = false;
+            
+            stressLevelEl.value = formData.stressLevel;
+            focusLevelEl.value = formData.focusLevel;
+            coopLevelEl.value = formData.coopLevel;
+            
+            // 슬라이더 초기화
+            rangeSlowEl.value = formData.slowLearners;
+            rangeFastEl.value = 100 - formData.fastLearners; // (20 -> 80)
+            updateSliderDisplay();
+            
+            // 화면 3
+            document.querySelectorAll('input[name="support"]:checked').forEach(el => el.checked = false);
+            supportOtherEl.value = formData.supportOther;
+            
+            // 3. 결과 화면 초기화
+            resultsContainer.innerHTML = '';
+            errorContainer.classList.add('hidden');
+            loadingContainer.classList.add('hidden');
+            
+            // 4. 화면 0으로 이동
+            goToScreen(0);
+        }
+
+        // ---
+        // 5. 데이터 수집
+        // ---
+        function saveCurrentScreenData() {
+            try {
+                switch (currentScreen) {
+                    case 0:
+                        formData.schoolType = schoolTypeEl.value;
+                        formData.grade = gradeEl.value;
+                        formData.subject = subjectEl.value;
+                        formData.topic = topicEl.value;
+                        break;
+                    case 1:
+                        formData.track = Array.from(document.querySelectorAll('input[name="track"]:checked'))
+                                              .map(el => el.value);
+                        break;
+                    case 2:
+                        const featureEl = document.querySelector('input[name="classFeature"]:checked');
+                        formData.classFeature = featureEl ? featureEl.value : '';
+                        formData.stressLevel = stressLevelEl.value;
+                        formData.focusLevel = focusLevelEl.value;
+                        formData.coopLevel = coopLevelEl.value;
+                        // 슬라이더 값은 'formData'에 이미 실시간으로 저장되어 있음 (by updateSliderDisplay)
+                        break;
+                    case 3:
+                        formData.support = Array.from(document.querySelectorAll('input[name="support"]:checked'))
+                                              .map(el => el.value);
+                        formData.supportOther = supportOtherEl.value;
+                        if (formData.supportOther && !formData.support.includes(formData.supportOther)) {
+                            formData.support.push(formData.supportOther);
+                        }
+                        break;
+                }
+            } catch (e) {
+                console.error("Data save error:", e);
+            }
+        }
+        
+        // ---
+        // 6. AI 생성 (Gemini API)
+        // ---
+        
+        // 생성 시작 핸들러
+        async function handleGenerate() {
+            // 마지막 단계(Support) 데이터 저장
+            saveCurrentScreenData(); // 현재 화면(3) 데이터 저장
+            
+            // 화면 4(결과)로 이동
+            goToScreen(4); 
+            
+            // 로딩 표시
+            loadingContainer.classList.remove('hidden');
+            resultsContainer.innerHTML = '';
+            errorContainer.classList.add('hidden');
+
+            try {
+                // 1. 프롬프트 빌드
+                const prompt = buildApiPrompt(formData);
+                
+                // 2. API 호출
+                const htmlResult = await callGeminiAPI(prompt);
+                
+                // 3. 결과 렌더링
+                resultsContainer.innerHTML = htmlResult;
+                loadingContainer.classList.add('hidden');
+
+            } catch (error) {
+                console.error('Generation failed:', error);
+                loadingContainer.classList.add('hidden');
+                errorContainer.classList.remove('hidden');
+                errorMessageEl.textContent = error.message;
+            }
+        }
+
+        /**
+         * AI에게 보낼 상세 프롬프트를 생성합니다.
+         * [수정 3, 4] 가독성, 상세화, 헤더 정렬
+         */
+        function buildApiPrompt(data) {
+            const trackData = data.track.length > 0 ? data.track.join(', ') : '선택 안 함';
+            const supportData = data.support.length > 0 ? data.support.join(', ') : '선택 안 함';
+
+            // AI에게 지시할 프롬프트 (한국어)
+            return `
+            당신은 훈민초등학교 T.A.S.K 프레임워크를 완벽하게 이해한 '수석 수업설계 전문가'입니다.
+
+            다음은 교사가 입력한 수업 설계 기본 정보입니다:
+            - 학교급: ${data.schoolType}
+            - 학년: ${data.grade} 학년
+            - 과목: ${data.subject}
+            - 학습 주제: ${data.topic}
+            - 수집할 데이터 (Track): ${trackData}
+            - 학급 특징 (Analyze):
+                - 전반적 특징: ${data.classFeature || '선택 안 함'}
+                - 정서: 스트레스(${data.stressLevel || '미입력'}), 집중력(${data.focusLevel || '미입력'}), 협력(${data.coopLevel || '미입력'})
+                - 학습자 비율: 느림(${data.slowLearners}%), 보통(${data.midLearners}%), 빠름(${data.fastLearners}%)
+            - 지원 전략 (Support): ${supportData}
+
+            이 정보를 바탕으로, [화면 4]와 [화면 5]에 해당하는 내용을 **순수 HTML 코드**로 생성해 주세요.
+            **절대** \`\`\`html 이나 \`\`\`markdown 같은 코드 블록 마커를 사용하지 마세요.
+            **절대** <html>, <head>, <body> 태그를 포함하지 마세요.
+            
+            모든 내용은 한국어로 작성해 주세요.
+            
+            ---
+            <!-- [화면 4: T.A.S.K 기반 차시 수업 설계안] 시작 -->
+            <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; color: #0D47A1;">T.A.S.K 기반 차시 수업 설계안</h2>
+            
+            <!-- 개요 -->
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background-color: #F0F6FF; border-radius: 0.5rem; border: 1px solid #BEE3F8;">
+                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem;">개요</h3>
+                <p><strong>학습 주제:</strong> ${data.topic}</p>
+                <p><strong>학습 목표:</strong> (AI가 '${data.topic}' 주제와 ${data.grade}학년 성취기준을 바탕으로 학생 행동 중심의 학습 목표를 1~2문장으로 자동 생성합니다. 예: '나눗셈의 원리를 이해하고, 실생활 문제에 적용하여 스스로 문제를 구성하고 해결할 수 있다.')</p>
+            </div>
+
+            <!-- TASK 요약 -->
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background-color: #F9FAFB; border-radius: 0.5rem; border: 1px solid #E5E7EB;">
+                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem;">T.A.S.K 요약</h3>
+                <ul style="list-style-type: disc; list-style-position: inside; space-y: 0.5rem;">
+                    <li><strong>Track:</strong> (AI가 '${trackData}' 등 선택된 데이터를 기반으로 서술합니다. 예: 'AIDT 진단평가 결과 및 교사 관찰 기록을 통해 학생별 연산 정확도와 학습 태도를 파악함.')</li>
+                    <li><strong>Analyze:</strong> (AI가 '${data.classFeature}'와 학습자 비율(${data.slowLearners}/${data.midLearners}/${data.fastLearners})을 조합하여 서술합니다. 예: '학급은 전반적으로 '${data.classFeature}' 특징을 보이며, 특히 ${data.slowLearners}%의 느린 학습자(${data.focusLevel} 집중력)에 대한 선행 개념 보충이 필요함.')</li>
+                    <li><strong>Support:</strong> (AI가 '${supportData}' 전략을 요약하여 서술합니다. 예: '수준별 맞춤형 과제와 AI코스웨어 보충 과제를 병행하여 개별 학습 경로를 지원함.')</li>
+                    <li><strong>Know:</strong> (AI가 '수업 결과 및 학생 성찰을 통해 학습자별 성취 경험을 확인하고 다음 차시 협력학습 구조에 반영'과 같이 환류 계획을 자동 생성합니다.)</li>
+                </ul>
+            </div>
+
+            <!-- [수정 3.a] 제목 변경: 수업 지도안 -->
+            <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">수업 지도안</h3>
+            <div style="overflow-x: auto; border-radius: 0.5rem; border: 1px solid #E5E7EB;">
+                <table style="min-width: 100%; width: 100%; border-collapse: collapse;">
+                    <thead style="background-color: #F3F4F6; border-bottom: 2px solid #D1D5DB;">
+                        <tr>
+                            <!-- [수정 3.b] 테이블 헤더 중앙 정렬, 줄바꿈 방지 -->
+                            <th style="padding: 1rem 1.25rem; text-align: center; white-space: nowrap; font-size: 1rem; font-weight: 700; color: #374151; width: 10%;">수업 단계</th>
+                            <th style="padding: 1rem 1.25rem; text-align: center; white-space: nowrap; font-size: 1rem; font-weight: 700; color: #374151; width: 40%;">수업 내용</th>
+                            <th style="padding: 1rem 1.25rem; text-align: center; white-space: nowrap; font-size: 1rem; font-weight: 700; color: #374151; width: 25%;">T A S K 요소</th>
+                            <th style="padding: 1rem 1.25rem; text-align: center; white-space: nowrap; font-size: 1rem; font-weight: 700; color: #374151; width: 25%;">자료 및 유의점</th>
+                        </tr>
+                    </thead>
+                    <tbody style="background-color: white; divide-y: 1px solid #E5E7EB;">
+                        <tr style="border-top: 1px solid #E5E7EB;">
+                            <td style="padding: 1rem 1.25rem; vertical-align: top;"><strong>도입</strong><br>(5분)</td>
+                            <td style="padding: 1rem 1.25rem; vertical-align: top; font-size: 0.875rem; line-height: 1.6;">
+                                <!-- [수정 1, 4] 내용 상세화 및 줄바꿈 지침 강화 -->
+                                (AI가 ${data.track}와 ${data.classFeature}를 고려하여, '${data.topic}'에 대한 **매우 구체적이고 상세한** 동기유발 활동을 서술합니다. 교사의 발문과 학생의 예상 반응을 포함하여 4~5문장으로 풍부하게 작성해주세요. **<br> 태그를 사용해 활동의 논리적 단위를 구분해주세요.** <br>
+                                예: '1. (발문) "여러분, 지난 시간에 배운 곱셈이 기억나나요?" <br> 띵커벨 퀴즈로 복습해봅시다. [${data.classFeature}] 특징을 반영, 퀴즈는 가장 기본적인 개념 3문항으로 구성합니다. <br> 2. (시청) 오늘 배울 (몇십)÷(몇)이 실생활(예: '과자 40개를 4명이 나누기')에서 어떻게 쓰이는지 영상을 시청합니다. <br> (발문) "영상을 보니 어떤 생각이 드나요?" (학생) "나누기 같아요!" "공평하게 나눠야 해요." <br> 3. (안내) "맞습니다. 오늘은 이렇게 묶음으로 나누는 활동을 AI와 함께 공부해 보겠습니다."')
+                            </td>
+                            <td style="padding: 1rem 1.25rem; vertical-align: top; font-size: 0.875rem; line-height: 1.6;">
+                                <strong>[T]</strong> (AI가 Track 요소를 구체적으로 서술합니다. 예: '띵커벨 퀴즈 결과를 통해 선수학습 성취도 실시간 추적')<br>
+                                <strong>[T]</strong> (AI가 정서 데이터 관련 서술. 예: '영상 시청 시 학생들의 집중도 및 정서 반응 관찰 (${trackData.includes("교사 관찰 기록") ? "교사관찰" : "데이터"})')
+                            </td>
+                            <td style="padding: 1rem 1.25rem; vertical-align: top; font-size: 0.875rem; line-height: 1.6;">
+                                ★ (AI가 자료 생성. 예: 띵커벨 퀴즈, 실생활 영상)<br>
+                                ※ (AI가 유의점 생성. 예: '느린 학습자가 퀴즈에 좌절하지 않도록 난이도 조절.')
+                            </td>
+                        </tr>
+                        <tr style="border-top: 1px solid #E5E7EB;">
+                            <td style="padding: 1rem 1.25rem; vertical-align: top;"><strong>전개</strong><br>(30분)</td>
+                            <td style="padding: 1rem 1.25rem; vertical-align: top; font-size: 0.875rem; line-height: 1.6;">
+                                <!-- [수정 1, 2, 4] 내용 상세화, 줄바꿈, 맞춤형 과제 박스 처리 지침 -->
+                                (AI가 ${data.fastLearners}%, ${data.midLearners}%, ${data.slowLearners}% 비율과 ${supportData} 전략을 조합하여 **매우 구체적이고 상세한 맞춤형 활동**을 서술합니다. **각 수준별 활동을 교사의 안내, 학생의 활동 내용, 활용하는 에듀테크 도구를 명시하여 풍부하게 작성해주세요.** **중요: <ul><li> 태그를 사용해 글머리 기호 목록으로 명확히 구분하고, 각 활동 내에서도 <br> 태그로 줄바꿈을 하여 가독성을 높여주세요.**) <br>
+                                예: '1. [전체] 기본 개념 설명 (AI코스웨어 활용) <br> (교사) "AI코스웨어의 개념 영상을 1분간 보고, 핵심 원리를 따라 적어봅시다." <br><br> 2. [맞춤형 활동 전개] (교사) "이제 자신의 수준에 맞는 문제를 풀어보겠습니다. AI가 여러분에게 꼭 맞는 문제를 줄 거예요."
+                                <!-- [수정 2] 맞춤형 활동 시각적 구분을 위한 박스 -->
+                                <div style="margin-top: 10px; padding: 12px; border: 1px solid #D1D5DB; border-radius: 0.5rem; background-color: #F9FAFB;">
+                                <ul style="list-style-type: disc; margin-left: 20px;">
+                                    <li><strong>빠른 학습자(${data.fastLearners}%):</strong> [${supportData.includes("수준별 맞춤형 과제") ? "도전과제" : "심화활동"}] <br> - 활동: 나눗셈을 활용한 실생활 심화 문제(예: '우리 반 20명을 3명씩...') 2문항 풀이. <br> - 도구: 띵커벨 보드를 활용해 스스로 '문제 만들기' 후 친구들과 공유. <br> - 교사: "문제를 아주 잘 만들었네요. 이 문제를 친구가 풀 수 있을까요?"</li>
+                                    <li style="margin-top: 8px;"><strong>보통 학습자(${data.midLearners}%):</strong> [${supportData.includes("AI코스웨어") ? "AI코스웨어" : "기본활동"}] <br> - 활동: AI코스웨어의 핵심 문제 3개를 풀고 자동 피드백 확인. <br> - 교사: (순회) "AI 피드백을 보고 다시 풀어볼까요? 곱셈구구를 생각해보세요." 오답이 많은 학생 1:1 순회 지도.</li>
+                                    <li style="margin-top: 8px;"><strong>느린 학습자(${data.slowLearners}%):</strong> [${data.classFeature.includes("기초 학력 격차") ? "선행보충" : "기초활동"}] <br> - 활동: 교사와 함께 곱셈구구 복습(디지털 교과서 활용). <br> - 도구: AI코스웨어 기초 연산(보충) 문제 5개 풀이. <br> - 교사: (집중 지도) "40을 4로 나누면, 4단 곱셈구구에서 40이 나오는 걸 찾으면 돼요. 4x10=40이죠?"</li>
+                                </ul>
+                                </div>
+                            </td>
+                            <td style="padding: 1rem 1.25rem; vertical-align: top; font-size: 0.875rem; line-height: 1.6;">
+                                <strong>[A]</strong> (AI가 Analyze 요소를 서술합니다. 예: 'AI코스웨어 대시보드를 통해 학습자별 문제 풀이 속도와 정답률 실시간 분석')<br>
+                                <strong>[S]</strong> (AI가 Support 요소를 서술합니다. 예: '분석된 데이터를 기반으로 수준별(빠른/보통/느린) 맞춤형 과제 및 피드백 즉각 제공')<br>
+                                <strong>[S]</strong> (AI가 '${data.slowLearners}%' 관련 지원을 서술. 예: '느린 학습자에게는 [${supportData.includes("교사 피드백") ? "교사" : "AI"} 피드백] 1:1 추가 지원')
+                            </td>
+                            <td style="padding: 1rem 1.25rem; vertical-align: top; font-size: 0.875rem; line-height: 1.6;">
+                                ★ (AI가 자료 생성. 예: AI코스웨어(하이러닝 등), 띵커벨 보드)<br>
+                                ※ (AI가 유의점 생성. 예: '빠른 학습자가 활동을 빨리 끝낼 경우를 대비해 추가 도전과제 준비')<br>
+                                ※ (AI가 유의점 생성. 예: 'AI 피드백이 해결 못하는 부분은 교사가 즉각 개입')
+                            </td>
+                        </tr>
+                        <tr style="border-top: 1px solid #E5E7EB;">
+                            <td style="padding: 1rem 1.25rem; vertical-align: top;"><strong>정리</strong><br>(5분)</td>
+                            <td style="padding: 1rem 1.25rem; vertical-align: top; font-size: 0.875rem; line-height: 1.6;">
+                                <!-- [수정 1, 4] 내용 상세화 및 줄바꿈 지침 강화 -->
+                                (AI가 ${trackData.includes("AI 마음일기") ? "AI 마음일기" : "성찰일지"}를 활용한 **구체적인** 성찰 활동을 서술합니다. **<br> 태그를 써서 1. 과 2. 를 명확히 구분하고, 논리 단위별로 줄바꿈을 해주세요.**) <br>
+                                예: '1. [전체] 오늘 배운 내용 핵심 정리 (배움 공책) <br> (교사) "오늘 배운 (몇십)÷(몇)의 핵심 원리는 무엇이었나요?" <br><br> 2. [개별] ${trackData.includes("AI 마음일기") ? "[AI 마음일기]" : "[학습 성찰일지]"}를 통해 학습 성찰 작성. <br> (발문) "오늘 나눗셈을 배우며 가장 자신있었던 부분은 무엇인가요? 아직 도움이 필요한 부분은 무엇인가요? AI의 도움이 되었나요?"'
+                            </td>
+                            <td style="padding: 1rem 1.25rem; vertical-align: top; font-size: 0.875rem; line-height: 1.6;">
+                                <strong>[K]</strong> (AI가 Know 요소를 서술합니다. 예: '학생 성찰문(AI마음일기)을 통해 학습 내용 이해도 및 정서적 성취감 확인')<br>
+                                <strong>[K]</strong> (AI가 Know 요소를 서술합니다. 예: '루브릭 기반 교사 관찰 평가로 성취도 최종 점검')
+                            </td>
+                            <td style="padding: 1rem 1.25rem; vertical-align: top; font-size: 0.875rem; line-height: 1.6;">
+                                ★ (AI가 자료 생성. 예: ${trackData.includes("AI 마음일기") ? "AI 마음일기" : "성찰일지"}, 배움 공책, 루브릭 평가표)<br>
+                                ※ (AI가 유의점 생성. 예: '성취도가 낮은 학생의 성찰 내용에 긍정적 피드백 제공')
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <!-- [화면 4] 끝 -->
+
+            <hr style="margin-top: 2.5rem; margin-bottom: 2.5rem; border-top: 2px solid #E5E7EB;">
+
+            <!-- [화면 5: K (Know) - 일반화 및 환류] 시작 -->
+            <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; color: #0D47A1;">K (Know) - 일반화 및 환류 보고서 (초안)</h2>
+            <p style="margin-bottom: 1.5rem; color: #4B5563;">생성된 수업 설계안을 바탕으로 '환류(Know)' 보고서 초안을 작성했습니다. 수업 후 실제 데이터를 바탕으로 수정/보완하세요.</p>
+
+            <!-- 1. 평가 요소 및 기준 -->
+            <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem;">1. 평가 요소 및 기준 (예시)</h3>
+            <div style="overflow-x: auto; border-radius: 0.5rem; border: 1px solid #E5E7EB; margin-bottom: 1.5rem;">
+                <table style="min-width: 100%; width: 100%; border-collapse: collapse;">
+                    <thead style="background-color: #F9FAFB;">
+                        <tr>
+                            <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; color: #4B5563;">평가 요소</th>
+                            <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; color: #4B5563;">매우 잘함</th>
+                            <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; color: #4B5563;">잘함</th>
+                            <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; color: #4B5563;">보통</th>
+                            <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; color: #4B5563;">노력 요함</th>
+                        </tr>
+                    </thead>
+                    <tbody style="background-color: white; divide-y: 1px solid #E5E7EB;">
+                        <tr style="border-top: 1px solid #E5E7EB;">
+                            <td style="padding: 1rem; vertical-align: top; font-size: 0.875rem;">(AI가 '${data.topic}'의 학습목표 1 기반 평가요소 생성. 예: '${data.subject}의 원리를 논리적으로 설명하는가?')</td>
+                            <td style="padding: 1rem; vertical-align: top; font-size: 0.875rem;">(AI가 기준 자동 생성)</td>
+                            <td style="padding: 1rem; vertical-align: top; font-size: 0.875rem;">(AI가 기준 자동 생성)</td>
+                            <td style="padding: 1rem; vertical-align: top; font-size: 0.875rem;">(AI가 기준 자동 생성)</td>
+                            <td style="padding: 1rem; vertical-align: top; font-size: 0.875rem;">(AI가 기준 자동 생성)</td>
+                        </tr>
+                        <tr style="border-top: 1px solid #E5E7EB;">
+                            <td style="padding: 1rem; vertical-align: top; font-size: 0.875rem;">(AI가 '학습 태도/정서' 관련 평가요소 생성. 예: '자신의 수준에 맞는 과제에 끝까지 도전하는가?')</td>
+                            <td style="padding: 1rem; vertical-align: top; font-size: 0.875rem;">(AI가 기준 자동 생성)</td>
+                            <td style="padding: 1rem; vertical-align: top; font-size: 0.875rem;">(AI가 기준 자동 생성)</td>
+                            <td style="padding: 1rem; vertical-align: top; font-size: 0.875rem;">(AI가 기준 자동 생성)</td>
+                            <td style="padding: 1rem; vertical-align: top; font-size: 0.875rem;">(AI가 기준 자동 생성)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 2. 수업 결과 분석 (예상) -->
+            <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem;">2. 수업 결과 분석 (예상)</h3>
+            <p style="margin-bottom: 1.5rem; padding: 1rem; background-color: #F9FAFB; border-radius: 0.5rem; font-size: 0.875rem; line-height: 1.6;">
+                (AI가 ${data.slowLearners}%의 느린 학습자와 ${supportData} 전략을 연계하여 예상 결과 서술. 예: '수업 전후 데이터 비교 시, 느린 학습자의 과제 참여 시간이 00% 증가할 것으로 예상됨. 전반적인 학습 태도(${data.focusLevel} 집중력) 및 몰입도가 향상될 것으로 기대.')
+            </p>
+
+            <!-- 3. 학습자 수준별 활동 결과 분석 (예상) -->
+            <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem;">3. 학습자 수준별 활동 결과 분석 (예상)</h3>
+            <ul style="margin-bottom: 1.5rem; list-style-type: disc; list-style-position: inside; space-y: 0.5rem; padding: 1rem; background-color: #F9FAFB; border-radius: 0.5rem; font-size: 0.875rem; line-height: 1.6;">
+                <li><strong>빠른 학습자(${data.fastLearners}%):</strong> (AI가 '${data.fastLearners}%' 관련 예상 결과 서술. 예: '심화 문제에 적극 도전하며 높은 성취감을 보일 것임.')</li>
+                <li><strong>보통 학습자(${data.midLearners}%):</strong> (AI가 '${data.midLearners}%' 관련 예상 결과 서술. 예: 'AI 피드백을 통해 핵심 개념을 안정적으로 성취할 것임.')</li>
+                <li><strong>느린 학습자(${data.slowLearners}%):</strong> (AI가 '${data.slowLearners}%' 관련 예상 결과 서술. 예: '기초 과제를 포기 없이 완료하며 \'성취 경험\'을 강화할 것임.')</li>
+            </ul>
+
+            <!-- 4. 학습자 유형별 피드백 계획 (예시) -->
+            <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem;">4. 학습자 유형별 피드백 계획 (예시)</h3>
+            <ul style="margin-bottom: 1.5rem; list-style-type: disc; list-style-position: inside; space-y: 0.5rem; padding: 1rem; background-color: #F9FAFB; border-radius: 0.5rem; font-size: 0.875rem; line-height: 1.6;">
+                <li><strong>빠른 학습자:</strong> (AI가 '${data.fastLearners}%' 관련 피드백 계획 서술. 예: '다음 차시 심화 문제 및 프로젝트형 과제 연계 지원.')</li>
+                <li><strong>보통 학습자:</strong> (AI가 '${data.midLearners}%' 관련 피드백 계획 서술. 예: '유사 유형 반복 풀이 및 동료 피드백 기회 제공.')</li>
+                <li><strong>느린 학습자:</strong> (AI가 '${data.slowLearners}%' 관련 피드백 계획 서술. 예: '1:1 보충 지도 및 AI 코스웨어 보정 학습 강화.')</li>
+            </ul>
+
+            <!-- 5. 데이터 기반 수업 개선 계획 (예시) -->
+            <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem;">5. 데이터 기반 수업 개선 계획 (예시)</h3>
+            <p style="margin-bottom: 1.5rem; padding: 1rem; background-color: #F9FAFB; border-radius: 0.5rem; font-size: 0.875rem; line-height: 1.6;">
+                (AI가 ${trackData}와 ${data.classFeature}를 종합하여 다음 차시 개선 계획 서술. 예: '느린 학습자의 성취 경험이 긍정적 정서로 이어지는지 [${trackData.includes("AI 마음일기") ? "AI 마음일기" : "성찰일지"}] 데이터로 확인 필요. 다음 단원에서는 협력학습 비중을 높여 보통 학습자가 느린 학습자를 돕는 구조를 설계할 계획임.')
+            </p>
+            <!-- [화면 5] 끝 -->
+            `;
+        }
+        
+
+        /**
+         * Gemini API를 호출합니다.
+         * 재시도 로직을 포함합니다.
+         */
+        async function callGeminiAPI(prompt, retries = 3, delay = 1000) {
+            // [수정] API 키 로드: localStorage에 저장된 키를 우선 사용, 없으면 빈 문자열 (Canvas 기본 키)
+            const apiKey = localStorage.getItem(STORAGE_KEY) || ""; 
+            
+            // [수정] URL에 apiKey 변수 적용
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ 
+                    parts: [{ text: prompt }] 
+                }],
+                // 안전 설정 (차단 최소화)
+                safetySettings: [
+                    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+                ],
+                generationConfig: {
+                    // HTML 생성을 위해 temperature를 낮춰 안정적인 출력을 유도
+                    temperature: 0.2, 
+                    topK: 1,
+                    topP: 1,
+                    maxOutputTokens: 8192, // 충분한 토큰 확보
+                    // responseMimeType: "text/html" // text/plain (기본값)으로 유지
+                }
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorBodyText = await response.text();
+                    console.error("API Error Body:", errorBodyText);
+                    if (response.status === 429 && retries > 0) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        return callGeminiAPI(prompt, retries - 1, delay * 2); 
+                    }
+                    throw new Error(`API Error ${response.status}: ${errorBodyText}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0) {
+                    if (result.candidates[0].content && result.candidates[0].content.parts[0]) {
+                        return result.candidates[0].content.parts[0].text;
+                    } else if (result.candidates[0].finishReason && result.candidates[0].finishReason !== 'STOP') {
+                         // 안전 문제 등으로 차단된 경우
+                         throw new Error(`API generation stopped. Reason: ${result.candidates[0].finishReason}. Check safety ratings.`);
+                    }
+                }
+                
+                throw new Error('No valid content returned from API.');
+
+            } catch (error) {
+                if (retries > 0) {
+                    // 네트워크 오류 등 fetch 실패 시 재시도
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return callGeminiAPI(prompt, retries - 1, delay * 2);
+                }
+                console.error("API call failed after retries:", error);
+                throw error;
+            }
+        }
+    </script>
+
+</body>
+</html>
